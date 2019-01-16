@@ -13,7 +13,8 @@ import {
 
 interface IHomeState {
   selectedCurrencies: TCurrency[],
-  showModal: boolean
+  showModal: boolean,
+  editingId: number
 }
 
 class Home extends PureComponent<{}, IHomeState> {
@@ -23,6 +24,7 @@ class Home extends PureComponent<{}, IHomeState> {
     super(props)
 
     this.state = {
+      editingId: 0,
       showModal: false,
       selectedCurrencies: ['Aud', 'Usd']
     }
@@ -66,7 +68,7 @@ class Home extends PureComponent<{}, IHomeState> {
 
     const store: TStoreContent = {
       allTransactions: {
-        '0': { id: 0, amount: 100, type: 'debit', currency: 'Aud' },
+        '0': { id: 0, amount: 120, type: 'debit', currency: 'Aud' },
         '1': { id: 1, amount: 150, type: 'credit', currency: 'Aud' },
         '2': { id: 2, amount: 230, type: 'credit', currency: 'Usd' }
       },
@@ -75,20 +77,25 @@ class Home extends PureComponent<{}, IHomeState> {
     context.setStore(store)
   }
 
-  edit(transaction: TTransaction) {
-    this.setState({ showModal: true })
+  toggleModal(show: boolean) {
+    this.setState({ showModal: show })
   }
 
-  saveChanges(id: number) {
-    const context: TStoreContext = this.context
-    // const tempTransaction = this.state.tempTransactions[id]
+  edit(transaction: TTransaction) {
+    this.setState({ editingId: transaction.id }, () => this.toggleModal(true))
+  }
 
-    // context.setStore({
-    //   // ids: [
-        
-    //   // ],
-    //   all: {}
-    // })
+  saveChanges(id: number, amount: number, type: 'debit' | 'credit', currency: TCurrency) {
+    const context: TStoreContext = this.context
+
+    context.setStore({
+      ...context.store,
+      allTransactions: {
+        ...context.store.allTransactions,
+        [id]: { id, amount, type, currency }
+      }
+    })
+    this.setState({ showModal: false })
   }
 
   transactionRow(transaction: TTransaction): JSX.Element {
@@ -123,14 +130,17 @@ class Home extends PureComponent<{}, IHomeState> {
     const context = this.context as TStoreContext
 
     const { tranactionIdsFromSelectedCurrencies } = this
-    const { selectedCurrencies } = this.state
+    const { selectedCurrencies, editingId } = this.state
 
-    const transaction: TTransaction = context.store.allTransactions[0]
+    const transaction: TTransaction = context.store.allTransactions[editingId]
+    console.log('transaction', transaction)
 
     const modal = transaction ? (
       <EditTransactionModal
-        isOpen={true}
+        isOpen={this.state.showModal}
         transaction={transaction}
+        save={(...args) => this.saveChanges(...args)}
+        toggle={(show: boolean) => this.toggleModal(show)}
       />
     ) : ''
 
